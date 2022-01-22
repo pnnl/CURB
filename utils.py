@@ -14,31 +14,74 @@ def plot_configs(model_path, integer_to_color_map, integer_to_space_type_map):
         km = pickle.load(d)[0]
     k_star = km.cluster_centroids_.shape[0]
     
-    fig, axs = plt.subplots(int(k_star/2), 2, figsize=(20,8))#, dpi=80)
+    fig, axs = plt.subplots(int(k_star/2), 2, figsize=(20,8))#, dpi=300)
     x_pos = np.arange(0,100,1)
     height = np.ones((100,))
     
     counter = 0
+    
     for index, val in np.ndenumerate(np.ones((int(k_star/2),2))):
-        axs[index].bar(x_pos, height, width=1, align="center", color=[ integer_to_color_map[k] for k in km.cluster_centroids_[counter,:] ])
+        axs[index].bar(x_pos, height, width=1.0, align="center", color=[ integer_to_color_map[k] for k in km.cluster_centroids_[counter,:] ])
         labels = list(set(km.cluster_centroids_[counter,:]))
         for label in labels: shown_labels.add(label)
         if counter == k_star-1:
             handles = [plt.Rectangle((0,0),1,1, color=integer_to_color_map[label]) for label in shown_labels ]
-            plt.legend(handles, [integer_to_space_type_map[i] for i in shown_labels ], loc='center left', bbox_to_anchor=(1, 0.5), fontsize=18)
+            plt.legend(handles, [integer_to_space_type_map[i] for i in shown_labels ], loc='center left', bbox_to_anchor=(1.05, 4.5), fontsize=18)
         axs[index].label_outer()
-        axs[index].set_ylabel("Mode " + str(counter+1), fontsize=16, rotation=70)
+        axs[index].set_ylabel("Mode " + str(counter+1), fontsize=18, rotation=90)
         axs[index].set_yticklabels([])
+        axs[index].set_xlim([0,100])
+        
         if counter == k_star - 1 or counter == k_star - 2:
-            axs[index].set_xlabel("Proportion of blockface (ordered)", fontsize=16)
+            axs[index].set_xlabel("Proportion of blockface (ordered)", fontsize=20)
+            axs[index].tick_params(axis='x', labelsize=18)
         counter += int(val)
+        
         
     gs1 = gridspec.GridSpec(int(k_star/2), 2)
     gs1.update(wspace=0.1, hspace=0.1)
     
     plt.show()
     
-def kmodes_clustering_loop_k(k_max, ekey_to_block_alloc, ekeys=None):
+def plot_configs_with_membership(model_path, integer_to_color_map, integer_to_space_type_map, total_num, membership_counts):
+    #this only works for even k since this plots in 2 columns
+    all_labels = list(integer_to_space_type_map.keys())
+    shown_labels = set()
+    
+    with open(model_path, 'rb') as d:
+        km = pickle.load(d)[0]
+    k_star = km.cluster_centroids_.shape[0]
+    
+    fig, axs = plt.subplots(int(k_star/2), 2, figsize=(20,8))#, dpi=300)
+    x_pos = np.arange(0,100,1)
+    height = np.ones((100,))
+    
+    counter = 0
+    
+    for index, val in np.ndenumerate(np.ones((int(k_star/2),2))):
+        axs[index].bar(x_pos, height, width=1.0, align="center", color=[ integer_to_color_map[k] for k in km.cluster_centroids_[counter,:] ])
+        labels = list(set(km.cluster_centroids_[counter,:]))
+        for label in labels: shown_labels.add(label)
+        if counter == k_star-1:
+            handles = [plt.Rectangle((0,0),1,1, color=integer_to_color_map[label]) for label in shown_labels ]
+            plt.legend(handles, [integer_to_space_type_map[i] for i in shown_labels ], loc='center left', bbox_to_anchor=(1.05, 4.5), fontsize=18)
+        axs[index].label_outer()
+        axs[index].set_ylabel("Mode " + str(counter+1) + "\n" + "(" + str(membership_counts[counter])+ "/" + str(total_num) + ")", fontsize=18, rotation=90)
+        axs[index].set_yticklabels([])
+        axs[index].set_xlim([0,100])
+        
+        if counter == k_star - 1 or counter == k_star - 2:
+            axs[index].set_xlabel("Proportion of blockface (ordered)", fontsize=20)
+            axs[index].tick_params(axis='x', labelsize=18)
+        counter += int(val)
+        
+        
+    gs1 = gridspec.GridSpec(int(k_star/2), 2)
+    gs1.update(wspace=0.1, hspace=0.1)
+    
+    plt.show()
+    
+def kmodes_clustering_loop_k(k_max, ekey_to_block_alloc, dissim_func, ekeys=None):
     all_data = []
     if ekeys == None:
         ekeys = ekey_to_block_alloc.keys()
@@ -60,7 +103,7 @@ def kmodes_clustering_loop_k(k_max, ekey_to_block_alloc, ekeys=None):
         print("Training model for ", str(i), "clusters")
 
         #initialize and train the model
-        km = KModes(n_clusters=i, init='Cao', n_init=5, verbose=0)
+        km = KModes(n_clusters=i, init='Cao', n_init=5, max_iter=100, verbose=0, cat_dissim=dissim_func)
         clusters = km.fit_predict(train_data)
         models.append([km])
 
